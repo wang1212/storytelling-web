@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Building Effective Agents - Deep Space Style</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-primary: #030712;
+        --bg-secondary: #111827;
+        --text-primary: #f9fafb;
+        --text-secondary: #6b7280;
+        --accent: #818cf8;
+        --accent-secondary: #c084fc;
+        --stars: rgba(255, 255, 255, 0.1);
+        --font-display: 'Space Grotesk', system-ui, sans-serif;
+        --font-body: 'DM Sans', system-ui, sans-serif;
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.7;
+        overflow-x: hidden;
+      }
+
+      /* Starfield Background */
+      .starfield {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+          radial-gradient(
+            2px 2px at 20% 30%,
+            rgba(255, 255, 255, 0.3) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            2px 2px at 40% 70%,
+            rgba(255, 255, 255, 0.2) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            1px 1px at 50% 40%,
+            rgba(255, 255, 255, 0.4) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            1px 1px at 60% 60%,
+            rgba(255, 255, 255, 0.2) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            2px 2px at 90% 10%,
+            rgba(255, 255, 255, 0.3) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            1px 1px at 15% 80%,
+            rgba(255, 255, 255, 0.2) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            2px 2px at 75% 85%,
+            rgba(255, 255, 255, 0.3) 0%,
+            transparent 50%
+          );
+        background-size: 200% 200%;
+        animation: twinkle 20s ease-in-out infinite;
+      }
+
+      @keyframes twinkle {
+        0%,
+        100% {
+          background-position: 0% 0%;
+        }
+        50% {
+          background-position: 100% 100%;
+        }
+      }
+
+      /* Spotlight Effect */
+      .spotlight {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(
+          circle at center,
+          transparent 0%,
+          var(--bg-primary) 70%
+        );
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .progress-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          var(--accent),
+          var(--accent-secondary)
+        );
+        z-index: 1000;
+        transition: width 0.1s linear;
+      }
+
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        padding: 2rem;
+        z-index: 2;
+      }
+
+      .hero-title {
+        font-family: var(--font-display);
+        font-size: clamp(2.5rem, 6vw, 5rem);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+
+      .hero-title span {
+        background: linear-gradient(
+          135deg,
+          var(--accent) 0%,
+          var(--accent-secondary) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero-subtitle {
+        font-size: clamp(1.1rem, 2vw, 1.5rem);
+        color: var(--text-secondary);
+        max-width: 600px;
+        line-height: 1.6;
+      }
+
+      .scroll-indicator {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--accent);
+        animation: bounce 2s infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        40% {
+          transform: translateX(-50%) translateY(-10px);
+        }
+        60% {
+          transform: translateX(-50%) translateY(-5px);
+        }
+      }
+
+      .section {
+        min-height: 100vh;
+        padding: clamp(4rem, 10vh, 8rem) 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 2;
+      }
+
+      .section-content {
+        max-width: 720px;
+        width: 100%;
+      }
+
+      .chapter-marker {
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3em;
+        color: var(--accent);
+        margin-bottom: 1rem;
+        display: block;
+      }
+
+      h2 {
+        font-family: var(--font-display);
+        font-size: clamp(1.8rem, 3vw, 2.5rem);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+      }
+
+      p {
+        margin-bottom: 1.5rem;
+        font-size: clamp(1rem, 1.2vw, 1.125rem);
+        color: var(--text-secondary);
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition:
+          opacity 0.8s var(--ease-out-expo),
+          transform 0.8s var(--ease-out-expo);
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .reveal-delay-1 {
+        transition-delay: 0.1s;
+      }
+      .reveal-delay-2 {
+        transition-delay: 0.2s;
+      }
+      .reveal-delay-3 {
+        transition-delay: 0.3s;
+      }
+
+      .pull-quote {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-style: italic;
+        text-align: center;
+        padding: 3rem 2rem;
+        margin: 3rem 0;
+        border-left: 4px solid var(--accent);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="starfield"></div>
+    <div class="spotlight"></div>
+
+    <section class="hero">
+      <div class="reveal">
+        <h1 class="hero-title"><span>构建高效的</span><br />AI 智能体</h1>
+        <p class="hero-subtitle">
+          探索 Anthropic 在开发可靠 AI
+          智能体方面的研究实践，了解工作流与智能体的核心区别
+        </p>
+      </div>
+      <div class="scroll-indicator">
+        <svg
+          width="30"
+          height="30"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M12 5v14M19 12l-7 7-7-7" />
+        </svg>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">01 / 核心概念</span>
+        <h2 class="reveal reveal-delay-1">工作流 vs 智能体</h2>
+        <p class="reveal reveal-delay-2">
+          工作流（Workflows）是通过预定义代码路径来编排 LLM
+          和工具的系统。智能体（Agents）则是由 LLM
+          动态指导自身流程和工具使用的系统，能够自主决定如何完成任务。
+        </p>
+        <blockquote class="pull-quote reveal reveal-delay-3">
+          "成功的实现往往使用简单、可组合的模式，而非复杂的框架。"
+        </blockquote>
+      </div>
+    </section>
+
+    <script>
+      // Scroll Observer
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+          });
+        },
+        { threshold: 0.15 },
+      );
+
+      document
+        .querySelectorAll('.reveal')
+        .forEach((el) => observer.observe(el));
+
+      // Progress Bar
+      function updateProgress() {
+        const scrollTop = window.scrollY;
+        const docHeight =
+          document.documentElement.scrollHeight - window.innerHeight;
+        document.getElementById('progressBar').style.width =
+          (scrollTop / docHeight) * 100 + '%';
+      }
+      window.addEventListener('scroll', updateProgress);
+    </script>
+  </body>
+</html>

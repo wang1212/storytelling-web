@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generative UI - Google Research</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=Nunito:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f7f7f7;
+        --text-primary: #000000;
+        --text-secondary: #555555;
+        --accent: #ff3300;
+        --grid: rgba(0, 0, 0, 0.05);
+
+        --font-display: "Archivo", system-ui, sans-serif;
+        --font-body: "Nunito", system-ui, sans-serif;
+
+        --slide-width: 1280px;
+        --slide-height: 720px;
+
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        overflow: hidden;
+      }
+
+      .presentation {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide {
+        width: var(--slide-width);
+        height: var(--slide-height);
+        background: var(--bg-primary);
+        position: relative;
+        display: none;
+        overflow: hidden;
+      }
+
+      .slide.active {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Grid overlay */
+      .slide::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image:
+          linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      /* Content layouts */
+      .slide-content {
+        padding: 4rem 5rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        z-index: 2;
+      }
+
+      .slide-title {
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .slide-content-left {
+        justify-content: center;
+      }
+
+      .slide-split {
+        flex-direction: row;
+        align-items: center;
+        gap: 4rem;
+      }
+
+      .slide-split > div {
+        flex: 1;
+      }
+
+      /* Accent bar */
+      .accent-bar {
+        width: 80px;
+        height: 8px;
+        background: var(--accent);
+        margin-bottom: 1.5rem;
+      }
+
+      /* Typography */
+      h1 {
+        font-family: var(--font-display);
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1.05;
+        margin-bottom: 1rem;
+        letter-spacing: -0.02em;
+      }
+
+      h2 {
+        font-family: var(--font-display);
+        font-size: 2.8rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+      }
+
+      h3 {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.8rem;
+        color: var(--accent);
+      }
+
+      p {
+        font-size: 1.3rem;
+        line-height: 1.6;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+      }
+
+      .subtitle {
+        font-size: 1.4rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        max-width: 700px;
+      }
+
+      .meta {
+        margin-top: 2rem;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      /* Lists */
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      li {
+        font-size: 1.2rem;
+        line-height: 1.8;
+        color: var(--text-secondary);
+        margin-bottom: 0.8rem;
+        padding-left: 1.5rem;
+        position: relative;
+      }
+
+      li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.7rem;
+        width: 8px;
+        height: 8px;
+        background: var(--accent);
+      }
+
+      /* Geometric decorations */
+      .geo-circle {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border: 2px solid var(--grid);
+        border-radius: 50%;
+        top: -100px;
+        right: -50px;
+        z-index: 0;
+      }
+
+      .geo-rect {
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        background: var(--accent);
+        bottom: 60px;
+        right: 80px;
+        z-index: 0;
+        opacity: 0.9;
+      }
+
+      .geo-line {
+        position: absolute;
+        width: 200px;
+        height: 4px;
+        background: var(--accent);
+        bottom: 100px;
+        left: 80px;
+        z-index: 0;
+      }
+
+      /* Stats/Numbers */
+      .stat-box {
+        background: var(--bg-secondary);
+        padding: 2rem;
+        margin: 1rem 0;
+        border-left: 4px solid var(--accent);
+      }
+
+      .stat-number {
+        font-family: var(--font-display);
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--accent);
+        display: block;
+      }
+
+      .stat-label {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      /* Animations */
+      @keyframes slideInLeft {
+        from {
+          opacity: 0;
+          transform: translateX(-60px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(40px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes scaleIn {
+        from {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .animate-in {
+        animation: slideInLeft 0.6s var(--ease-out-expo) forwards;
+      }
+
+      .animate-up {
+        animation: slideInUp 0.6s var(--ease-out-expo) forwards;
+      }
+
+      .animate-scale {
+        animation: scaleIn 0.8s var(--ease-out-expo) forwards;
+      }
+
+      .animate-fade {
+        animation: fadeIn 0.6s ease forwards;
+      }
+
+      .delay-1 {
+        animation-delay: 0.1s;
+        opacity: 0;
+      }
+      .delay-2 {
+        animation-delay: 0.2s;
+        opacity: 0;
+      }
+      .delay-3 {
+        animation-delay: 0.3s;
+        opacity: 0;
+      }
+      .delay-4 {
+        animation-delay: 0.4s;
+        opacity: 0;
+      }
+
+      /* Navigation */
+      .nav {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        display: flex;
+        gap: 0.5rem;
+        z-index: 100;
+      }
+
+      .nav button {
+        background: var(--bg-primary);
+        border: 2px solid var(--text-primary);
+        color: var(--text-primary);
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transition: all 0.2s ease;
+      }
+
+      .nav button:hover {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+      }
+
+      .nav button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      /* Progress */
+      .progress {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        height: 6px;
+        background: var(--accent);
+        transition: width 0.3s ease;
+        z-index: 100;
+      }
+
+      /* Page number */
+      .page-num {
+        position: absolute;
+        bottom: 2rem;
+        left: 5rem;
+        font-family: var(--font-display);
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        z-index: 2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="presentation">
+      <!-- Slide 1: Title -->
+      <div class="slide slide-title active" data-slide="1">
+        <div class="geo-circle"></div>
+        <div class="geo-rect animate-scale delay-4"></div>
+        <div class="slide-content">
+          <div class="accent-bar animate-in"></div>
+          <h1 class="animate-in delay-1">Generative UI</h1>
+          <p class="subtitle animate-in delay-2">
+            A rich, custom, visual interactive user experience for any prompt
+          </p>
+          <div class="meta animate-in delay-3">
+            Google Research · November 2025
+          </div>
+        </div>
+        <div class="page-num">01 / 08</div>
+      </div>
+
+      <!-- Slide 2: The Problem -->
+      <div class="slide" data-slide="2">
+        <div class="slide-content slide-content-left">
+          <div class="accent-bar animate-in"></div>
+          <h2 class="animate-in delay-1">The Wall of Text Problem</h2>
+          <p
+            class="animate-up delay-2"
+            style="font-size: 1.4rem; max-width: 800px"
+          >
+            Most LLM responses still collapse into text. Even strong models fall
+            back to paragraphs and markdown.
+          </p>
+          <ul class="animate-up delay-3" style="margin-top: 2rem">
+            <li>Static, predefined interfaces limit AI capability</li>
+            <li>Text-only responses underuse model potential</li>
+            <li>Users forced to parse complex information manually</li>
+            <li>One-size-fits-all approach ignores context</li>
+          </ul>
+        </div>
+        <div class="page-num">02 / 08</div>
+      </div>
+
+      <!-- Slide 3: What is Generative UI -->
+      <div class="slide" data-slide="3">
+        <div class="slide-content slide-split">
+          <div>
+            <div class="accent-bar animate-in"></div>
+            <h2 class="animate-in delay-1">What is<br />Generative UI?</h2>
+          </div>
+          <div class="animate-up delay-2">
+            <p style="font-size: 1.4rem; margin-bottom: 2rem">
+              A powerful capability where AI models generate not only content
+              but an entire user experience.
+            </p>
+            <ul>
+              <li>Immersive visual experiences</li>
+              <li>Interactive interfaces & tools</li>
+              <li>Custom web pages & apps</li>
+              <li>Games & simulations</li>
+            </ul>
+          </div>
+        </div>
+        <div class="page-num">03 / 08</div>
+      </div>
+
+      <!-- Slide 4: Key Innovation -->
+      <div class="slide" data-slide="4">
+        <div class="geo-line animate-scale delay-4"></div>
+        <div class="slide-content slide-content-left">
+          <div class="accent-bar animate-in"></div>
+          <h2 class="animate-in delay-1">Dynamic Generation</h2>
+          <p
+            class="animate-up delay-2"
+            style="font-size: 1.4rem; max-width: 800px"
+          >
+            Interfaces are automatically designed and fully customized in
+            response to any question, instruction, or prompt.
+          </p>
+          <div style="display: flex; gap: 2rem; margin-top: 3rem">
+            <div class="stat-box animate-up delay-3">
+              <span class="stat-number">Any</span>
+              <span class="stat-label">Prompt Type</span>
+            </div>
+            <div
+              class="stat-box animate-up delay-3"
+              style="animation-delay: 0.4s"
+            >
+              <span class="stat-number">Zero</span>
+              <span class="stat-label">Predefined Templates</span>
+            </div>
+            <div
+              class="stat-box animate-up delay-3"
+              style="animation-delay: 0.5s"
+            >
+              <span class="stat-number">100%</span>
+              <span class="stat-label">Custom Generated</span>
+            </div>
+          </div>
+        </div>
+        <div class="page-num">04 / 08</div>
+      </div>
+
+      <!-- Slide 5: How It Works -->
+      <div class="slide" data-slide="5">
+        <div class="slide-content">
+          <div class="accent-bar animate-in"></div>
+          <h2 class="animate-in delay-1">How It Works</h2>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 3rem;
+              margin-top: 2rem;
+            "
+          >
+            <div class="animate-up delay-2">
+              <h3>01. Understanding</h3>
+              <p>
+                LLM interprets user intent and context from natural language
+                prompts
+              </p>
+            </div>
+            <div class="animate-up delay-2" style="animation-delay: 0.2s">
+              <h3>02. Design</h3>
+              <p>
+                AI decides optimal UI components, layout, and interaction
+                patterns
+              </p>
+            </div>
+            <div class="animate-up delay-3">
+              <h3>03. Generation</h3>
+              <p>
+                Complete interface code generated on-the-fly with full
+                functionality
+              </p>
+            </div>
+            <div class="animate-up delay-3" style="animation-delay: 0.2s">
+              <h3>04. Delivery</h3>
+              <p>
+                Rich, interactive experience rendered instantly for the user
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="page-num">05 / 08</div>
+      </div>
+
+      <!-- Slide 6: Applications -->
+      <div class="slide" data-slide="6">
+        <div
+          class="geo-circle"
+          style="
+            top: auto;
+            bottom: -150px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+          "
+        ></div>
+        <div class="slide-content slide-content-left">
+          <div class="accent-bar animate-in"></div>
+          <h2 class="animate-in delay-1">Real-World Applications</h2>
+          <ul class="animate-up delay-2" style="max-width: 700px">
+            <li>
+              <strong>Learning Tools:</strong> Interactive tutorials generated
+              from any topic
+            </li>
+            <li>
+              <strong>Data Visualization:</strong> Custom charts and dashboards
+              on demand
+            </li>
+            <li>
+              <strong>Productivity Apps:</strong> Planners, calculators,
+              converters
+            </li>
+            <li>
+              <strong>Creative Tools:</strong> Simulations, galleries, design
+              helpers
+            </li>
+            <li>
+              <strong>Educational Content:</strong> Explorable concepts and
+              models
+            </li>
+          </ul>
+          <p
+            class="animate-up delay-3"
+            style="margin-top: 2rem; font-style: italic"
+          >
+            "A fractal explanation becomes a fractal explorer with sliders."
+          </p>
+        </div>
+        <div class="page-num">06 / 08</div>
+      </div>
+
+      <!-- Slide 7: Results -->
+      <div class="slide" data-slide="7">
+        <div class="slide-content">
+          <div class="accent-bar animate-in"></div>
+          <h2 class="animate-in delay-1">Research Results</h2>
+          <div
+            style="
+              display: flex;
+              gap: 3rem;
+              margin-top: 3rem;
+              align-items: center;
+            "
+          >
+            <div style="flex: 1" class="animate-up delay-2">
+              <p style="font-size: 1.4rem; margin-bottom: 2rem">
+                User studies show significant preference for generated
+                interfaces over static text responses.
+              </p>
+              <ul>
+                <li>Higher user engagement and satisfaction</li>
+                <li>Better information comprehension</li>
+                <li>More intuitive interaction patterns</li>
+              </ul>
+            </div>
+            <div
+              style="
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+              "
+              class="animate-up delay-3"
+            >
+              <div class="stat-box" style="margin: 0">
+                <span class="stat-number">Gemini</span>
+                <span class="stat-label">App Integration</span>
+              </div>
+              <div class="stat-box" style="margin: 0">
+                <span class="stat-number">Search</span>
+                <span class="stat-label">AI Mode Deployment</span>
+              </div>
+              <div class="stat-box" style="margin: 0">
+                <span class="stat-number">Live</span>
+                <span class="stat-label">Production Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-num">07 / 08</div>
+      </div>
+
+      <!-- Slide 8: Closing -->
+      <div class="slide slide-title" data-slide="8">
+        <div class="geo-circle"></div>
+        <div class="geo-rect animate-scale delay-3"></div>
+        <div class="slide-content">
+          <div class="accent-bar animate-in"></div>
+          <h2 class="animate-in delay-1">
+            The Future of<br />Human-AI Interaction
+          </h2>
+          <p class="subtitle animate-up delay-2" style="max-width: 700px">
+            The interface becomes part of the answer, not just a container for
+            it.
+          </p>
+          <div class="meta animate-up delay-3" style="margin-top: 3rem">
+            Read the full paper: "Generative UI: LLMs are Effective UI
+            Generators"
+          </div>
+        </div>
+        <div class="page-num">08 / 08</div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button onclick="prevSlide()" id="prevBtn">← Previous</button>
+      <button onclick="nextSlide()" id="nextBtn">Next →</button>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <script>
+      let currentSlide = 1;
+      const totalSlides = document.querySelectorAll(".slide").length;
+
+      function showSlide(n) {
+        const slides = document.querySelectorAll(".slide");
+
+        if (n > totalSlides) currentSlide = 1;
+        if (n < 1) currentSlide = totalSlides;
+
+        slides.forEach((slide) => slide.classList.remove("active"));
+        slides[currentSlide - 1].classList.add("active");
+
+        // Update progress
+        document.getElementById("progress").style.width =
+          (currentSlide / totalSlides) * 100 + "%";
+
+        // Update buttons
+        document.getElementById("prevBtn").disabled = currentSlide === 1;
+        document.getElementById("nextBtn").disabled =
+          currentSlide === totalSlides;
+
+        // Re-trigger animations
+        const animated = slides[currentSlide - 1].querySelectorAll(
+          ".animate-in, .animate-up, .animate-scale, .animate-fade",
+        );
+        animated.forEach((el) => {
+          el.style.animation = "none";
+          el.offsetHeight;
+          el.style.animation = null;
+        });
+      }
+
+      function nextSlide() {
+        if (currentSlide < totalSlides) {
+          currentSlide++;
+          showSlide(currentSlide);
+        }
+      }
+
+      function prevSlide() {
+        if (currentSlide > 1) {
+          currentSlide--;
+          showSlide(currentSlide);
+        }
+      }
+
+      // Keyboard navigation
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " ") nextSlide();
+        if (e.key === "ArrowLeft") prevSlide();
+      });
+
+      // Initialize
+      showSlide(currentSlide);
+    </script>
+  </body>
+</html>

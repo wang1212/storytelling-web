@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Building Effective Agents | Anthropic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-primary: #0a0f1c;
+        --bg-secondary: #111827;
+        --text-primary: #ffffff;
+        --text-secondary: #94a3b8;
+        --accent: #00ffcc;
+        --accent-secondary: #ff00aa;
+        --glow: rgba(0, 255, 204, 0.4);
+        --font-display: 'Space Grotesk', system-ui, sans-serif;
+        --font-body: 'DM Sans', system-ui, sans-serif;
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.7;
+        overflow-x: hidden;
+      }
+
+      #particles {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .progress-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          var(--accent),
+          var(--accent-secondary)
+        );
+        box-shadow: 0 0 10px var(--glow);
+        z-index: 1000;
+        transition: width 0.1s linear;
+      }
+
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        padding: 2rem;
+      }
+
+      .hero-title {
+        font-family: var(--font-display);
+        font-size: clamp(2.5rem, 6vw, 5rem);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--accent) 0%,
+          var(--accent-secondary) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: 0 0 40px var(--glow);
+        letter-spacing: -0.02em;
+      }
+
+      .hero-subtitle {
+        font-size: clamp(1.1rem, 2vw, 1.5rem);
+        color: var(--text-secondary);
+        max-width: 700px;
+        line-height: 1.6;
+      }
+
+      .scroll-indicator {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--accent);
+        animation: bounce 2s infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        40% {
+          transform: translateX(-50%) translateY(-10px);
+        }
+        60% {
+          transform: translateX(-50%) translateY(-5px);
+        }
+      }
+
+      .section {
+        min-height: 100vh;
+        padding: clamp(4rem, 10vh, 8rem) 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 1;
+      }
+
+      .section-content {
+        max-width: 720px;
+        width: 100%;
+      }
+
+      .chapter-marker {
+        font-family: var(--font-display);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3em;
+        color: var(--accent);
+        margin-bottom: 1rem;
+        display: block;
+        text-shadow: 0 0 10px var(--glow);
+      }
+
+      h2 {
+        font-family: var(--font-display);
+        font-size: clamp(1.8rem, 3vw, 2.5rem);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+      }
+
+      h3 {
+        font-family: var(--font-display);
+        font-size: clamp(1.3rem, 2vw, 1.8rem);
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--accent);
+      }
+
+      p {
+        margin-bottom: 1.5rem;
+        font-size: clamp(1rem, 1.2vw, 1.125rem);
+        color: var(--text-secondary);
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition:
+          opacity 0.6s var(--ease-out-expo),
+          transform 0.6s var(--ease-out-expo);
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .reveal-delay-1 {
+        transition-delay: 0.1s;
+      }
+      .reveal-delay-2 {
+        transition-delay: 0.2s;
+      }
+      .reveal-delay-3 {
+        transition-delay: 0.3s;
+      }
+
+      .highlight-box {
+        background: linear-gradient(
+          135deg,
+          rgba(0, 255, 204, 0.1),
+          rgba(255, 0, 170, 0.1)
+        );
+        border: 1px solid rgba(0, 255, 204, 0.3);
+        border-radius: 12px;
+        padding: 2rem;
+        margin: 2rem 0;
+      }
+
+      .pull-quote {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-style: italic;
+        text-align: center;
+        padding: 3rem 2rem;
+        margin: 3rem 0;
+        border-left: 4px solid var(--accent);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        box-shadow: 0 0 30px rgba(0, 255, 204, 0.1);
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+      }
+
+      .feature-card {
+        background: var(--bg-secondary);
+        border: 1px solid rgba(0, 255, 204, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition:
+          transform 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 40px rgba(0, 255, 204, 0.15);
+      }
+
+      .feature-card h4 {
+        font-family: var(--font-display);
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+      }
+
+      .feature-card p {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .conclusion {
+        text-align: center;
+        padding: 4rem 2rem;
+      }
+
+      .conclusion h2 {
+        background: linear-gradient(
+          135deg,
+          var(--accent) 0%,
+          var(--accent-secondary) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        transition: opacity 0.3s ease;
+      }
+
+      a:hover {
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="progress-bar" id="progressBar"></div>
+    <canvas id="particles"></canvas>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="reveal">
+        <h1 class="hero-title">Building Effective Agents</h1>
+        <p class="hero-subtitle">
+          A practical guide to building reliable AI agents based on Anthropic's
+          research and experience working with dozens of teams
+        </p>
+      </div>
+      <div class="scroll-indicator">
+        <svg
+          width="30"
+          height="30"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M12 5v14M19 12l-7 7-7-7" />
+        </svg>
+      </div>
+    </section>
+
+    <!-- Section 1: Introduction -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">01 / Introduction</span>
+        <h2 class="reveal reveal-delay-1">Simplicity Over Complexity</h2>
+        <p class="reveal reveal-delay-2">
+          Over the past year, we've worked with dozens of teams building large
+          language model (LLM) agents. We consistently found that the most
+          successful implementations weren't using complex frameworks or
+          specialized libraries. Instead, they were building with simple,
+          composable patterns.
+        </p>
+        <p class="reveal reveal-delay-3">
+          This guide shares the best practices we've developed while helping
+          teams deploy agents in production, along with practical insights from
+          our own agent development.
+        </p>
+        <div class="highlight-box reveal reveal-delay-3">
+          <p style="color: var(--text-primary); margin: 0; font-weight: 500">
+            Successful agentic systems use simple, composable patterns rather
+            than complex frameworks.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Core Concepts -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">02 / Core Concepts</span>
+        <h2 class="reveal reveal-delay-1">Workflows vs. Agents</h2>
+
+        <h3 class="reveal reveal-delay-2">What are Workflows?</h3>
+        <p class="reveal reveal-delay-2">
+          Workflows are systems where LLMs and tools are orchestrated through
+          predefined code paths. In this pattern, developers explicitly specify
+          the steps and order of execution, with LLMs handling specific subtasks
+          at each step.
+        </p>
+
+        <h3 class="reveal reveal-delay-3">What are Agents?</h3>
+        <p class="reveal reveal-delay-3">
+          Agents are systems where LLMs dynamically direct their own processes
+          and tool usage. They maintain control over how they accomplish tasks,
+          deciding when to call tools, how to interpret results, and when to
+          conclude the task.
+        </p>
+
+        <blockquote class="pull-quote reveal reveal-delay-3">
+          "Workflows are suitable for predictable, structured tasks; Agents
+          excel at open-ended problems requiring flexible decision-making."
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- Section 3: When to Use What -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">03 / Decision Guide</span>
+        <h2 class="reveal reveal-delay-1">When to Use Workflows vs. Agents</h2>
+
+        <div class="feature-grid reveal reveal-delay-2">
+          <div class="feature-card">
+            <h4>Use Workflows</h4>
+            <p>
+              Predictable tasks with clear steps, strict control requirements,
+              cost-sensitive scenarios
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Use Agents</h4>
+            <p>
+              Flexible decision-making needed, uncertain steps, open-ended
+              problems, autonomous exploration required
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Hybrid Approach</h4>
+            <p>
+              Many successful applications combine both: workflows for
+              structured parts, agents for decision points
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Key Indicators</h4>
+            <p>
+              If failure is costly or audit trails are required, prefer
+              workflows
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Building Blocks -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">04 / Building Blocks</span>
+        <h2 class="reveal reveal-delay-1">Core Components of Agents</h2>
+
+        <h3 class="reveal reveal-delay-2">1. Planning</h3>
+        <p class="reveal reveal-delay-2">
+          Agents need to break down complex tasks into manageable steps. This
+          can be achieved through chain-of-thought prompting or dedicated
+          planning modules.
+        </p>
+
+        <h3 class="reveal reveal-delay-3">2. Memory</h3>
+        <p class="reveal reveal-delay-3">
+          Effective agents need to maintain context across interactions. This
+          includes conversation history, intermediate results, and key facts.
+          Memory can be short-term (within session) or long-term (across
+          sessions).
+        </p>
+
+        <h3 class="reveal reveal-delay-3">3. Tool Use</h3>
+        <p class="reveal reveal-delay-3">
+          Tools extend LLM capabilities by enabling interaction with external
+          systems. The key is providing agents with appropriate tools and
+          clearly describing their purpose.
+        </p>
+
+        <div class="highlight-box reveal reveal-delay-3">
+          <p style="color: var(--text-primary); margin: 0">
+            <strong>Best Practice:</strong> Provide clear descriptions, usage
+            examples, and error handling for tools. The quality of tool
+            descriptions directly impacts agent performance.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Patterns -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">05 / Design Patterns</span>
+        <h2 class="reveal reveal-delay-1">Effective Agentic Patterns</h2>
+
+        <div class="feature-grid reveal reveal-delay-2">
+          <div class="feature-card">
+            <h4>Prompt Chaining</h4>
+            <p>
+              Decompose tasks into a sequence of prompts, each processing the
+              previous output. Simple and easy to debug.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Routing</h4>
+            <p>
+              Classify inputs and route to specialized sub-flows. Ideal for
+              handling diverse input types.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Parallelization</h4>
+            <p>
+              Run multiple LLM calls simultaneously and aggregate results. Good
+              for tasks requiring multi-angle analysis.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Evaluator-Optimizer</h4>
+            <p>
+              One LLM generates output while another evaluates and provides
+              feedback in a loop. Ideal for high-quality requirements.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Agent Pattern</h4>
+            <p>
+              LLM decides when to call tools and interpret results autonomously.
+              Suitable for open-ended problems.
+            </p>
+          </div>
+          <div class="feature-card">
+            <h4>Multi-Agent</h4>
+            <p>
+              Multiple agents collaborate on tasks, each handling different
+              aspects. Good for complex, multi-dimensional problems.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: Best Practices -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">06 / Best Practices</span>
+        <h2 class="reveal reveal-delay-1">
+          Recommendations for Building Reliable Agents
+        </h2>
+
+        <h3 class="reveal reveal-delay-2">1. Start Simple</h3>
+        <p class="reveal reveal-delay-2">
+          Don't build complex agents from the start. Begin with the simplest
+          solution and add complexity only when necessary. Often, a
+          well-designed prompt chain is sufficient.
+        </p>
+
+        <h3 class="reveal reveal-delay-3">2. Design Good Tool Interfaces</h3>
+        <p class="reveal reveal-delay-3">
+          Tool descriptions should be as clear as documentation for a junior
+          developer. Include usage examples, edge cases, and error handling.
+          Tool interface quality directly impacts agent reliability.
+        </p>
+
+        <h3 class="reveal reveal-delay-3">
+          3. Provide Good Feedback Mechanisms
+        </h3>
+        <p class="reveal reveal-delay-3">
+          When agents make mistakes, they should receive feedback and correct.
+          Design systems with error recovery and retry mechanisms in mind.
+        </p>
+
+        <blockquote class="pull-quote reveal reveal-delay-3">
+          "Invest in tool design and error handling. This improves agent
+          reliability more than prompt optimization alone."
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- Section 7: Prompt Engineering Tools -->
+    <section class="section">
+      <div class="section-content">
+        <span class="chapter-marker reveal">07 / Appendix</span>
+        <h2 class="reveal reveal-delay-1">Prompt Engineering Your Tools</h2>
+
+        <p class="reveal reveal-delay-2">
+          Tools are a crucial part of any agentic system. They enable Claude to
+          interact with external services through well-defined interfaces. Tools
+          should receive the same prompt engineering attention as your overall
+          prompts.
+        </p>
+
+        <h3 class="reveal reveal-delay-3">Key Principles</h3>
+        <p class="reveal reveal-delay-3">
+          <strong>Give models room to "think"</strong> before they write
+          themselves into a corner. Some formats are much harder for LLMs than
+          others—writing diffs requires knowing line counts, while JSON requires
+          escaping.
+        </p>
+
+        <div class="highlight-box reveal reveal-delay-3">
+          <p style="color: var(--text-primary); margin: 0">
+            <strong>Golden Rule:</strong> Invest as much effort in creating good
+            agent-computer interfaces (ACI) as you would in human-computer
+            interfaces (HCI).
+          </p>
+        </div>
+
+        <h3 class="reveal reveal-delay-3">How to Design Good Tools</h3>
+        <p class="reveal reveal-delay-3">
+          • Put yourself in the model's shoes—is tool usage obvious from the
+          description?<br />
+          • Change parameter names to make things more obvious<br />
+          • Test extensively in the workbench to see what mistakes the model
+          makes<br />
+          • Apply poka-yoke principles: make it harder to make mistakes
+        </p>
+      </div>
+    </section>
+
+    <!-- Section 8: Conclusion -->
+    <section class="section conclusion">
+      <div class="section-content">
+        <span class="chapter-marker reveal">08 / Conclusion</span>
+        <h2 class="reveal reveal-delay-1">Simplicity is Key</h2>
+        <p class="reveal reveal-delay-2">
+          Building effective AI agents doesn't require complex frameworks or
+          specialized libraries. The most successful implementations use simple,
+          composable patterns, focusing on good tool design and clear
+          interfaces.
+        </p>
+        <p class="reveal reveal-delay-3">
+          Start simple, add complexity only when necessary. Invest in tool
+          design and error handling—this improves reliability more than prompt
+          optimization.
+        </p>
+        <div class="highlight-box reveal reveal-delay-3">
+          <p style="color: var(--text-primary); margin: 0; text-align: center">
+            <strong>Source:</strong>
+            <a
+              href="https://www.anthropic.com/engineering/building-effective-agents"
+              target="_blank"
+              >Building Effective Agents - Anthropic Engineering</a
+            >
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      // Particle System
+      const canvas = document.getElementById('particles');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function initParticles() {
+        particles = [];
+        for (let i = 0; i < 50; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            radius: Math.random() * 2 + 1,
+          });
+        }
+      }
+
+      function animateParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = canvas.width;
+          if (p.x > canvas.width) p.x = 0;
+          if (p.y < 0) p.y = canvas.height;
+          if (p.y > canvas.height) p.y = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0, 255, 204, 0.5)';
+          ctx.fill();
+        });
+        requestAnimationFrame(animateParticles);
+      }
+
+      resize();
+      initParticles();
+      animateParticles();
+      window.addEventListener('resize', () => {
+        resize();
+        initParticles();
+      });
+
+      // Scroll Observer
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+          });
+        },
+        { threshold: 0.15 },
+      );
+
+      document
+        .querySelectorAll('.reveal')
+        .forEach((el) => observer.observe(el));
+
+      // Progress Bar
+      function updateProgress() {
+        const scrollTop = window.scrollY;
+        const docHeight =
+          document.documentElement.scrollHeight - window.innerHeight;
+        document.getElementById('progressBar').style.width =
+          (scrollTop / docHeight) * 100 + '%';
+      }
+      window.addEventListener('scroll', updateProgress);
+    </script>
+  </body>
+</html>

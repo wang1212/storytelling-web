@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generative UI - Google Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --accent: #39d353;
+      --accent-dim: rgba(57, 211, 83, 0.2);
+      --border: #30363d;
+      --error: #f85149;
+      --warning: #d29922;
+      
+      --font-display: 'JetBrains Mono', monospace;
+      --font-body: 'JetBrains Mono', monospace;
+      
+      --slide-width: 1280px;
+      --slide-height: 720px;
+      
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: #000;
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    .presentation {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      width: var(--slide-width);
+      height: var(--slide-height);
+      background: var(--bg-primary);
+      position: relative;
+      display: none;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scan line effect */
+    .slide::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Content layouts */
+    .slide-content {
+      padding: 4rem 5rem;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 2;
+    }
+
+    .slide-center {
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .slide-content-left {
+      justify-content: center;
+    }
+
+    /* Terminal window style */
+    .terminal-window {
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      padding: 2rem;
+      position: relative;
+      width: 100%;
+    }
+
+    .terminal-window::before {
+      content: '● ● ●';
+      position: absolute;
+      top: 1rem;
+      left: 1.5rem;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      letter-spacing: 0.5rem;
+    }
+
+    /* Prompt line */
+    .prompt {
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .prompt::before {
+      content: '$ ';
+    }
+
+    /* Typography */
+    h1 {
+      font-family: var(--font-display);
+      font-size: 3.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
+      color: var(--accent);
+    }
+
+    h2 {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--accent);
+      line-height: 1.3;
+    }
+
+    h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      color: var(--warning);
+    }
+
+    p {
+      font-size: 1.1rem;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .meta {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+
+    /* Code blocks */
+    .code-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      margin: 1rem 0;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      overflow-x: auto;
+    }
+
+    .code-comment {
+      color: var(--text-secondary);
+    }
+
+    .code-keyword {
+      color: var(--accent);
+    }
+
+    .code-string {
+      color: var(--warning);
+    }
+
+    /* Lists */
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: var(--text-primary);
+      margin-bottom: 0.8rem;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+
+    li::before {
+      content: '>';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    /* Stats */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .stat-item {
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      background: var(--bg-secondary);
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+
+    .stat-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+
+    /* Process steps */
+    .process-step {
+      border-left: 2px solid var(--accent);
+      padding-left: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .step-num {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    /* Blinking cursor */
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1.2em;
+      background: var(--accent);
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+      margin-left: 0.3rem;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* Code decorations */
+    .code-line {
+      position: absolute;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      opacity: 0.3;
+      font-family: var(--font-display);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes typewriter {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    .animate-fade {
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .animate-slide {
+      animation: slideUp 0.5s var(--ease-out-expo) forwards;
+    }
+
+    .delay-1 { animation-delay: 0.1s; opacity: 0; }
+    .delay-2 { animation-delay: 0.3s; opacity: 0; }
+    .delay-3 { animation-delay: 0.5s; opacity: 0; }
+    .delay-4 { animation-delay: 0.7s; opacity: 0; }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 100;
+    }
+
+    .nav button {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    .nav button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .nav button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Progress */
+    .progress {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+      z-index: 100;
+    }
+
+    /* Page number */
+    .page-num {
+      position: absolute;
+      bottom: 2rem;
+      left: 5rem;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      z-index: 2;
+    }
+
+    /* Status indicators */
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+      font-size: 0.95rem;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="presentation">
+    <!-- Slide 1: Title -->
+    <div class="slide active" data-slide="1">
+      <div class="code-line" style="top: 15%; right: 5%;">const ui = generate(prompt);</div>
+      <div class="code-line" style="top: 25%; right: 8%;">return interactiveInterface;</div>
+      <div class="code-line" style="top: 35%; right: 3%;">// AI-powered experiences</div>
+      
+      <div class="slide-content slide-center">
+        <div class="terminal-window animate-fade delay-1" style="max-width: 800px;">
+          <div class="prompt animate-slide delay-2">research/google/generative-ui<span class="cursor"></span></div>
+          <h1 class="animate-slide delay-3">Generative UI</h1>
+          <p class="subtitle animate-slide delay-3">
+            A rich, custom, visual interactive user experience for any prompt
+          </p>
+          <div class="meta animate-slide delay-4">
+            > Google Research · November 2025 · LLMs as Effective UI Generators
+          </div>
+        </div>
+      </div>
+      <div class="page-num">[01/08]</div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide" data-slide="2">
+      <div class="slide-content slide-content-left">
+        <div class="terminal-window animate-fade delay-1">
+          <div class="prompt animate-slide delay-2">cat problem.txt</div>
+          <h2 class="animate-slide delay-3">ERROR: Wall of Text</h2>
+          <div class="code-block animate-slide delay-3">
+            <span class="code-comment">// Current state of LLM responses</span><br>
+            <span class="code-keyword">function</span> generateResponse() {<br>
+            &nbsp;&nbsp;<span class="code-keyword">return</span> <span class="code-string">"paragraphs of text..."</span>;<br>
+            &nbsp;&nbsp;<span class="code-comment">// Missing: visual context, interactivity</span><br>
+            }
+          </div>
+          <ul class="animate-slide delay-4">
+            <li>Static interfaces limit AI capabilities</li>
+            <li>Text-only underuses model potential</li>
+            <li>Users parse complex data manually</li>
+            <li>One-size-fits-all ignores context</li>
+          </ul>
+        </div>
+      </div>
+      <div class="page-num">[02/08]</div>
+    </div>
+
+    <!-- Slide 3: What is Generative UI -->
+    <div class="slide" data-slide="3">
+      <div class="slide-content">
+        <div class="terminal-window animate-fade delay-1">
+          <div class="prompt animate-slide delay-2">whatis generative-ui</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem;">
+            <div class="animate-slide delay-3">
+              <h3>DEFINITION</h3>
+              <p>AI generates not only content but an entire user experience dynamically.</p>
+            </div>
+            <div class="animate-slide delay-3" style="animation-delay: 0.4s;">
+              <h3>OUTPUTS</h3>
+              <ul style="margin-top: 0.5rem;">
+                <li>Web pages</li>
+                <li>Interactive tools</li>
+                <li>Games & sims</li>
+                <li>Applications</li>
+              </ul>
+            </div>
+          </div>
+          <div class="code-block animate-slide delay-4" style="margin-top: 1.5rem;">
+            <span class="code-comment">// Example: Fractal explanation becomes interactive explorer</span><br>
+            generateUI(<span class="code-string">"explain fractals"</span>) → { sliders, canvas, controls }
+          </div>
+        </div>
+      </div>
+      <div class="page-num">[03/08]</div>
+    </div>
+
+    <!-- Slide 4: Key Innovation -->
+    <div class="slide" data-slide="4">
+      <div class="slide-content slide-content-left">
+        <div class="terminal-window animate-fade delay-1">
+          <div class="prompt animate-slide delay-2">cat innovation.md</div>
+          <h2 class="animate-slide delay-3">Dynamic Generation</h2>
+          <p class="animate-slide delay-3">
+            Interfaces auto-designed & fully customized for any prompt.
+          </p>
+          <div class="stat-grid animate-slide delay-4">
+            <div class="stat-item">
+              <span class="stat-value">ANY</span>
+              <span class="stat-desc">Prompt Type Accepted</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">0</span>
+              <span class="stat-desc">Predefined Templates</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">100%</span>
+              <span class="stat-desc">Custom Generated</span>
+            </div>
+          </div>
+          <div class="status-line animate-slide delay-4" style="animation-delay: 0.6s; margin-top: 1.5rem;">
+            <span class="status-indicator"></span>
+            <span>Status: PRODUCTION READY</span>
+          </div>
+        </div>
+      </div>
+      <div class="page-num">[04/08]</div>
+    </div>
+
+    <!-- Slide 5: How It Works -->
+    <div class="slide" data-slide="5">
+      <div class="slide-content">
+        <div class="terminal-window animate-fade delay-1">
+          <div class="prompt animate-slide delay-2">./workflow.sh</div>
+          <h2 class="animate-slide delay-3">System Architecture</h2>
+          <div style="margin-top: 1.5rem;">
+            <div class="process-step animate-slide delay-3">
+              <span class="step-num">01_understand</span>
+              <p>LLM interprets user intent from natural language</p>
+            </div>
+            <div class="process-step animate-slide delay-3" style="animation-delay: 0.2s;">
+              <span class="step-num">02_design</span>
+              <p>AI selects optimal components & layout</p>
+            </div>
+            <div class="process-step animate-slide delay-3" style="animation-delay: 0.4s;">
+              <span class="step-num">03_generate</span>
+              <p>Complete interface code generated on-the-fly</p>
+            </div>
+            <div class="process-step animate-slide delay-3" style="animation-delay: 0.6s;">
+              <span class="step-num">04_deliver</span>
+              <p>Rich interactive experience rendered instantly</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page-num">[05/08]</div>
+    </div>
+
+    <!-- Slide 6: Applications -->
+    <div class="slide" data-slide="6">
+      <div class="slide-content slide-content-left">
+        <div class="terminal-window animate-fade delay-1">
+          <div class="prompt animate-slide delay-2">ls applications/</div>
+          <h2 class="animate-slide delay-3">Use Cases</h2>
+          <div class="code-block animate-slide delay-4">
+            <span class="code-comment"># Learning Tools</span><br>
+            $ generate tutorial --topic="quantum_physics"<br><br>
+            <span class="code-comment"># Data Visualization</span><br>
+            $ generate dashboard --data="sales_report.csv"<br><br>
+            <span class="code-comment"># Productivity</span><br>
+            $ generate planner --type="project_management"<br><br>
+            <span class="code-comment"># Creative</span><br>
+            $ generate simulation --model="fractal_explorer"
+          </div>
+          <p class="animate-slide delay-4" style="animation-delay: 0.6s; font-style: italic; color: var(--warning);">
+            > "A fractal explanation becomes a fractal explorer with sliders"
+          </p>
+        </div>
+      </div>
+      <div class="page-num">[06/08]</div>
+    </div>
+
+    <!-- Slide 7: Results -->
+    <div class="slide" data-slide="7">
+      <div class="slide-content">
+        <div class="terminal-window animate-fade delay-1">
+          <div class="prompt animate-slide delay-2">cat results.json</div>
+          <h2 class="animate-slide delay-3">Research Findings</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem;">
+            <div class="animate-slide delay-4">
+              <h3>USER_STUDIES</h3>
+              <ul>
+                <li>Higher engagement rates</li>
+                <li>Better comprehension</li>
+                <li>Intuitive interactions</li>
+              </ul>
+            </div>
+            <div class="animate-slide delay-4" style="animation-delay: 0.2s;">
+              <h3>DEPLOYMENT</h3>
+              <div class="stat-item" style="margin-bottom: 1rem;">
+                <span class="stat-value">LIVE</span>
+                <span class="stat-desc">Gemini App</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">LIVE</span>
+                <span class="stat-desc">Search AI Mode</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page-num">[07/08]</div>
+    </div>
+
+    <!-- Slide 8: Closing -->
+    <div class="slide" data-slide="8">
+      <div class="code-line" style="top: 20%; left: 5%;">interface = answer.component</div>
+      <div class="code-line" style="top: 30%; left: 8%;">ui != container</div>
+      
+      <div class="slide-content slide-center">
+        <div class="terminal-window animate-fade delay-1" style="max-width: 800px;">
+          <div class="prompt animate-slide delay-2">echo "The Future"</div>
+          <h2 class="animate-slide delay-3">Human-AI Interaction</h2>
+          <p class="subtitle animate-slide delay-3" style="color: var(--accent);">
+            The interface becomes part of the answer, not just a container for it.
+          </p>
+          <div class="code-block animate-slide delay-4" style="margin-top: 2rem;">
+            <span class="code-comment"># Read the full research paper</span><br>
+            $ curl https://research.google/pubs/generative-ui
+          </div>
+          <div class="meta animate-slide delay-4" style="animation-delay: 0.6s;">
+            > "Generative UI: LLMs are Effective UI Generators"
+          </div>
+        </div>
+      </div>
+      <div class="page-num">[08/08]</div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button onclick="prevSlide()" id="prevBtn">← prev</button>
+    <button onclick="nextSlide()" id="nextBtn">next →</button>
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = document.querySelectorAll('.slide').length;
+
+    function showSlide(n) {
+      const slides = document.querySelectorAll('.slide');
+
+      if (n > totalSlides) currentSlide = 1;
+      if (n < 1) currentSlide = totalSlides;
+
+      slides.forEach(slide => slide.classList.remove('active'));
+      slides[currentSlide - 1].classList.add('active');
+
+      // Update progress
+      document.getElementById('progress').style.width =
+        (currentSlide / totalSlides * 100) + '%';
+
+      // Update buttons
+      document.getElementById('prevBtn').disabled = currentSlide === 1;
+      document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+
+      // Re-trigger animations
+      const animated = slides[currentSlide - 1].querySelectorAll('.animate-fade, .animate-slide');
+      animated.forEach(el => {
+        el.style.animation = 'none';
+        el.offsetHeight;
+        el.style.animation = null;
+      });
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        showSlide(currentSlide);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        showSlide(currentSlide);
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    // Initialize
+    showSlide(currentSlide);
+  </script>
+</body>
+</html>
