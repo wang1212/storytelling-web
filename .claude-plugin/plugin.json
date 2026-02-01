@@ -1,0 +1,13 @@
+{
+  "name": "storytelling-web",
+  "description": "Create stunning, animation-rich exploratory visual web pages from text content.",
+  "version": "1.0.0",
+  "author": {
+    "name": "wang1212",
+    "email": "mrwang1212@126.com"
+  },
+  "homepage": "https://github.com/wang1212/storytelling-web",
+  "repository": "https://github.com/wang1212/storytelling-web",
+  "license": "MIT",
+  "keywords": ["skills", "slides", "storytelling", "visualization"]
+}

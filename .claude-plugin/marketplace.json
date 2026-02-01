@@ -1,0 +1,20 @@
+{
+  "name": "storytelling-web-marketplace",
+  "description": "Create stunning, animation-rich exploratory visual web pages from text content.",
+  "owner": {
+    "name": "wang1212",
+    "email": "mrwang1212@126.com"
+  },
+  "plugins": [
+    {
+      "name": "storytelling-web",
+      "description": "Create stunning, animation-rich exploratory visual web pages from text content. Supports both Slides mode (presentation-style with slide navigation) and Scrolling mode (scroll-driven narrative with progressive animations). Use when the user wants to transform text into immersive web experiences with distinctive visual design, smooth animations, and engaging interactions. Generates zero-dependency single-file HTML.",
+      "version": "4.0.3",
+      "source": "./",
+      "author": {
+        "name": "wang1212",
+        "email": "mrwang1212@126.com"
+      }
+    }
+  ]
+}
